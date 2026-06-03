@@ -77,7 +77,7 @@ python -m beat_detector.main [选项]
 | `sensitivity` | 1.5 | 检测灵敏度（越低越容易触发） |
 | `noise_floor` | 50.0 | 触发的最低通量值 |
 | `min_interval_ms` | 50 | 两次触发之间的最小间隔 |
-| `hop_size` | 256 | 处理步长（越大越省 CPU） |
+| `hop_size` | 256 | FFT 帧间跳步间隔（采样点数）。值越大，每秒处理帧数越少，CPU 占用越低，但节奏检测精度也会降低 |
 | `keybind` | "s" | 检测到鼓点时模拟的按键 |
 | `frequency_bands` | 3 个频段 | 频率范围及权重配置 |
 
@@ -164,7 +164,7 @@ Edit `beat_detector/config.json` or use the web control panel:
 | `sensitivity` | 1.5 | Detection sensitivity (lower = more easy triggers) |
 | `noise_floor` | 50.0 | Minimum flux value to trigger |
 | `min_interval_ms` | 50 | Minimum time between beats |
-| `hop_size` | 256 | Processing step size (larger = less CPU) |
+| `hop_size` | 256 | Hop interval between FFT frames in samples. Larger = fewer frames/sec, less CPU, coarser beat resolution |
 | `keybind` | "s" | Key to simulate on beat |
 | `frequency_bands` | 3 bands | Frequency ranges with weights |
 
