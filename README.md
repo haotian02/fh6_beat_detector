@@ -1,4 +1,4 @@
-# Beat Detector 🥁 | 鼓点检测器
+# fh6 Beat Detector 🥁 | 鼓点检测器
 
 [🇨🇳 中文](#chinese) | [🇺🇸 English](#english)
 
