@@ -89,10 +89,16 @@ class BeatDetector:
         return flux, threshold, is_beat
 
     def _run(self):
-        """Main processing loop. Reads from ring buffer, processes frames, triggers keys."""
+        """Main processing loop. Reads from ring buffer, processes frames, triggers keys.
+
+        Frames are processed every ``hop_size`` samples — larger hop = less CPU
+        but coarser time resolution for beat detection.
+        """
         logger.info("Detector loop started.")
         frame_size = self._cfg.frame_size
+        capacity = self._ring.capacity
         last_write_pos = self._ring.write_pos
+        samples_pending = 0
 
         # Wait for the ring buffer to fill with at least one frame of data
         while not self._stop_event.is_set():
@@ -109,26 +115,33 @@ class BeatDetector:
                     time.sleep(0.001)
                     continue
 
+                # Accumulate new samples with wrap-around handling
+                new_samples = (current_pos - last_write_pos) % capacity
                 last_write_pos = current_pos
+                samples_pending += new_samples
 
-                frame = self._ring.read(frame_size, advance=0)
-                flux, threshold, is_beat = self._process_frame(frame)
+                # Process one frame per hop_size new samples
+                while samples_pending >= self._cfg.hop_size:
+                    samples_pending -= self._cfg.hop_size
 
-                if self._state:
-                    self._state.update(flux, threshold, is_beat)
+                    frame = self._ring.read(frame_size, advance=0)
+                    flux, threshold, is_beat = self._process_frame(frame)
 
-                if self._cfg.show_debug:
-                    ratio = flux / (threshold + 1e-10)
-                    ts = time.strftime("%H:%M:%S", time.localtime())
-                    if is_beat:
-                        print(f"[{ts}] >>> KEY '{self._cfg.keybind}' SENT <<< "
-                              f"FLUX: {flux:.0f} THR: {threshold:.0f} RATIO: {ratio:.2f}")
-                    else:
-                        print(f"[{ts}]     FLUX: {flux:6.0f} THR: {threshold:6.0f} RATIO: {ratio:.2f}")
+                    if self._state:
+                        self._state.update(flux, threshold, is_beat)
 
-                if is_beat and self._cfg.enabled:
-                    threading.Thread(target=press_key, args=(self._cfg.keybind, 15),
-                                     daemon=True).start()
+                    if self._cfg.show_debug:
+                        ratio = flux / (threshold + 1e-10)
+                        ts = time.strftime("%H:%M:%S", time.localtime())
+                        if is_beat:
+                            print(f"[{ts}] >>> KEY '{self._cfg.keybind}' SENT <<< "
+                                  f"FLUX: {flux:.0f} THR: {threshold:.0f} RATIO: {ratio:.2f}")
+                        else:
+                            print(f"[{ts}]     FLUX: {flux:6.0f} THR: {threshold:6.0f} RATIO: {ratio:.2f}")
+
+                    if is_beat and self._cfg.enabled:
+                        threading.Thread(target=press_key, args=(self._cfg.keybind, 15),
+                                         daemon=True).start()
 
         except Exception:
             logger.exception("Detector loop error")
